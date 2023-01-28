@@ -1,32 +1,18 @@
-# _Sample project_
+# ESP_DRONE
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+ESP_drone is intended as a low-cost, small form-factor, micro-ros enabled quadcopter. It is particularily aimed towards prototyping multi-agent systems for education purposes.
 
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
+## How it works
+The ESP_drone features an ESP32s3 as it's name would suggest. This enables very easy integration into the existing ROS2 ecosystem, thanks to the work done by the micro-ros team. Currently, microros is enabled only through UDP, but could be enabled through UART with some work for debugging purposes.
 
+The ESP_drone has an InvenSense 20608-g 6-axis IMU, and a STMicroelectronics vl503lx for pose estimation. The board is designed to use 4x 8520 Brushed DC motor, as well as DJI Tello propellors.
 
+# IMPORTANT NOTE:
+DO NOT PLUG IN THE USB AND BATTERY AT THE SAME TIME. THERE IS A FLAW IN THE DESIGN THAT COULD ALLOW FOR A SMALL AMOUNT OF CURRENT TO FLOW INTO THE BATTERY
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+## How to use
+TODO: I'm not really sure atm, this will have to be updated
 
 ## Example folder contents
 
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
-
-Below is short explanation of remaining files in the project folder.
-
-```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
-```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+#
