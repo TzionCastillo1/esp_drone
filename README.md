@@ -13,6 +13,3 @@ DO NOT PLUG IN THE USB AND BATTERY AT THE SAME TIME. THERE IS A FLAW IN THE DESI
 ## How to use
 TODO: I'm not really sure atm, this will have to be updated
 
-## Example folder contents
-
-#
