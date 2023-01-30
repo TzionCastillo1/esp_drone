@@ -9,5 +9,15 @@
     ],
     "idf.port": "/dev/ttyACM1",
     "idf.pythonBinPath": "/home/tzion/.espressif/python_env/idf4.4_py3.8_env/bin/python",
-    "idf.toolsPath": "/home/tzion/.espressif"
+    "idf.toolsPath": "/home/tzion/.espressif",
+    "files.associations": {
+        "freertos.h": "c",
+        "bitset": "c",
+        "chrono": "c",
+        "algorithm": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "*.inc": "c"
+    }
 }
