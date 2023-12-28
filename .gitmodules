@@ -7,3 +7,7 @@
 [submodule "components/vl53l1x_esp_idf_component"]
 	path = components/vl53l1x_esp_idf_component
 	url = git@github.com:TzionCastillo1/vl53l1x_espidf_component.git
+[submodule "components/mat_inv"]
+	path = components/mat_inv
+	url = git@github.com:TzionCastillo1/mat_inv.git
+
