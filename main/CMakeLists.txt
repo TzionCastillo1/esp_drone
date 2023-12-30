@@ -1,4 +1,4 @@
-idf_component_register(SRCS "main copy.cpp" "main.cpp"
+idf_component_register(SRCS "main.cpp"
                     INCLUDE_DIRS "."
                     REQUIRES nvs_flash 
                             driver 
@@ -8,4 +8,5 @@ idf_component_register(SRCS "main copy.cpp" "main.cpp"
                             icm_20608_espidf_component 
                             micro_ros_espidf_component 
                             vl53l1x_esp_idf_component 
-                            mat_inv)
+                            mat_inv
+                            eigen)

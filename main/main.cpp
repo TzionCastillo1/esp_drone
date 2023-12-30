@@ -18,6 +18,7 @@
 #include "mat_inv.h"
 #include "ICM20608.h"
 #include "VL53L1X_api.h"
+#include "ekf_imu.h"
 
 #include <uros_network_interfaces.h>
 #include <rcl/rcl.h>
@@ -118,9 +119,9 @@ void twist_subscription_callback(const void * msgin){
 }
 
 //previous estimate
-float q[4];
+//float q[4];
 //prediction for next state
-float q_bar[4];
+//float q_bar[4];
 
 /*
 void add_mat(float* A, float* B, float* C){
@@ -157,10 +158,10 @@ void ekf_predict(float omega[3], float dt){
 
 }
 */
-class KalmanFilter {
-    public:
-        G_m = dspm::Mat::eye(12);
-};
+//class KalmanFilter {
+//    public:
+//        G_m = dspm::Mat::eye(12);
+//};
 
 void estimate_control_task(void * arg)
 {
@@ -172,6 +173,7 @@ void estimate_control_task(void * arg)
 
    //void ekf_predict();
    //void ekf_update();
+
 
 }
 
@@ -290,6 +292,14 @@ void app_main(void)
             NULL,
             5,
             NULL);
+
+    xTaskCreate(estimate_control_task,
+            "estimate_control_task",
+            32000,
+            NULL,
+            4,
+            NULL):
+            
     while(1){
         while(dataReady == 0)
         {
