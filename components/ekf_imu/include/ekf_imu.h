@@ -35,7 +35,7 @@ class ekf_imu
          * @param accel0 
          * @param P0
          */
-        void Init(Vector7f state0_, Matrix7f P0, Matrix7f Q, Eigen::Matrix3f R);
+        void init(Vector7f state0_, Matrix7f P0, Matrix7f Q, Eigen::Matrix3f R);
 
         /* TODO: change this input vector to me more generic*/
         Eigen::Matrix<float, 4, 3> skew(Eigen::Vector4f q_);
@@ -44,7 +44,7 @@ class ekf_imu
 
         Matrix3x7f setMeasurementMatrixJac(Eigen::Vector4f q_);
 
-        Vector7f qNorm(Vector7f state_);
+        void qNorm(Vector7f* state_);
 
         // Method to run prediction subroutine
         /** 
@@ -55,7 +55,7 @@ class ekf_imu
          * Matrix from the previous step 
          * (4) Measurement matrix Jacobian will be evaluated at the state prediction from step 2
         */
-        void predict(float* control, float dt);
+        void predict(float control[3], float dt);
 
 
         // Method to run update subroutine
@@ -68,12 +68,13 @@ class ekf_imu
          * measurement matrix using the most recent evaluated measurement matrix Jacobian
          * 
          */
-        void update();
+        void update(float measurement[3]);
 
         //Initial reference values of accelerometer
 
         void quat2TaitBryan(Vector7f state_, float* taitBryanAngles);
 
+        void printState();
 
     private:
     //Note an appended underscore indicates a vector (i.e x_ is a vector x)

@@ -9,4 +9,5 @@ idf_component_register(SRCS "main.cpp"
                             micro_ros_espidf_component 
                             vl53l1x_esp_idf_component 
                             mat_inv
-                            eigen)
+                            eigen
+                            ekf_imu)
