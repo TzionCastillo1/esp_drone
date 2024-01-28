@@ -35,14 +35,17 @@ class ekf_imu
          * @param accel0 
          * @param P0
          */
-        void init(Vector7f state0_, Matrix7f P0, Matrix7f Q, Eigen::Matrix3f R);
+        void init(Vector7f state0_, Matrix7f P0, Matrix7f Q, Eigen::Matrix3f R, void* offsets);
 
         /* TODO: change this input vector to me more generic*/
         Eigen::Matrix<float, 4, 3> skew(Eigen::Vector4f q_);
 
+        Eigen::Matrix4f skewOmega(Eigen::Vector4f w_);
         //Matrix7f setStateMatrix(Vector7f state_, float dt);
 
         Matrix3x7f setMeasurementMatrixJac(Eigen::Vector4f q_);
+
+        void threeNorm(Eigen::Vector3f* vec3_);
 
         void qNorm(Vector7f* state_);
 
@@ -72,7 +75,7 @@ class ekf_imu
 
         //Initial reference values of accelerometer
 
-        void quat2TaitBryan(Vector7f state_, float* taitBryanAngles);
+        void quat2TaitBryan(float* taitBryanAngles);
 
         void printState();
 
@@ -85,6 +88,7 @@ class ekf_imu
         Matrix7f P;
         Matrix7f Q;
         Eigen::Matrix3f R; 
+        float*  offsets;
 
 
 };

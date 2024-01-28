@@ -201,6 +201,7 @@ void estimate_control_task(void * arg)
     //Convert accel from 2g scal eto actual units (m/s/s)
     float gyro[3];
     float accel[3];
+    float tbangles[3];
 
     while(1){
         xWasDelayed = xTaskDelayUntil(&xLastWakeTime, xFrequency);
@@ -211,8 +212,16 @@ void estimate_control_task(void * arg)
             //std::cout<< "gyro:" << gyro[3 + i] << std::endl;
         }
         EKF_IMU->predict(gyro, (float) (KALMAN_PERIOD*.001));
-        //EKF_IMU->update();
+        EKF_IMU->update(accel);
         EKF_IMU->printState();
+        EKF_IMU->quat2TaitBryan(tbangles);
+//        for(int i = 0; i < 3; i++){
+  //          std::cout << tbangles[i];
+    //    }
+
+        std::cout << "Roll:" << tbangles[0] << std::endl;
+        std::cout << "Pitch:" << tbangles[1] << std::endl;
+        std::cout << "Yaw:" << tbangles[2] << std::endl;
 
     }
 
@@ -337,6 +346,8 @@ void app_main(void)
     uint16_t SensorID;
     char str[80];
     int16_t motion[6];
+    float rawOffsets[6];
+    float offsets[6];
     while(state == 0){
         Status = VL53L1X_BootState(vl53l1x, &state);
         ESP_LOGI(TAG, "Status: %u", state);
@@ -359,6 +370,16 @@ void app_main(void)
     ICM_20608 imu;
 
     ICM20608_init(&imu, I2C_NUM_0, ICM20608_DEFAULT_ADDR, 10000);
+    ICM20608_getOffsets(&imu, rawOffsets);
+
+    for(int i = 0; i < 3; i++){
+        offsets[i] = static_cast<float>(rawOffsets[i]) * ACC_SCALER;
+        offsets[i+3] = static_cast<float>(rawOffsets[i+3]) * GYRO_SCALER;
+        std::cout << "offsets" << offsets[i] << std::endl;
+        //gygy[i] = motion[3+i] * GYRO_SCALER;
+        //std::cout<< "gyro:" << gyro[3 + i] << std::endl;
+    }
+    offsets[2] = -offsets[2];
     //int16_t ax, ay, az;
     //int16_t gx, gy, gz;
     //ICM20608_getMotion(&imu, &ax, &ay, &az, &gx, &gy, &gz);
@@ -378,22 +399,28 @@ void app_main(void)
     */
 
     ekf_imu::Matrix7f Q = ekf_imu::Matrix7f::Identity();
-    Q *= .1;
+    Q *= .4;
 
     ekf_imu::Matrix7f P0 = ekf_imu::Matrix7f::Identity();
-    P0 *= .1;
+    P0 *= .0001;
 
     Eigen::Matrix3f R = Eigen::Matrix3f::Identity();
     R *= .1;
 
-    ekf_imu::Vector7f state0_ = {1,0,0,0,0,0,0};
+    /*
+    offsets[3] = 0;
+    offsets[4] = 0;
+    offsets[5] = 0;
+    */
+
+    ekf_imu::Vector7f state0_ = {1,0,0,0,offsets[3],offsets[4],offsets[5]};
 
     ekf_imu EKF;
     ekf_obj EKF_Obj;
-    EKF_Obj.motion = (int16_t*) &motion;
+    EKF_Obj.motion = (int16_t*) motion;
     EKF_Obj.EKF_IMU = &EKF;
 
-    EKF.init(state0_, P0, Q, R);
+    EKF.init(state0_, P0, Q, R, offsets);
 
     ESP_ERROR_CHECK(uros_network_interface_initialize());
     /* ranging loop */
@@ -430,13 +457,15 @@ void app_main(void)
             std::cout << str;
             ESP_LOGI("TOF TEST:" , "Range Status: %u", RangeStatus);
             */
-            ICM20608_getMotion(&imu, motion);               
-            /*std::cout << "Gyro motion:";
-            for(auto x:motion){
-                std::cout << x << std::endl;
-            }
-            */
+            ICM20608_getMotion(&imu, motion);  
+            motion[2] = motion[2];             
+            //std::cout << "Gyro motion:";
+            //for(int i = 0; i < 3; i++){
+            //    std::cout << motion[i] << std::endl;
+            //}
+            
             //ESP_LOGI(TAG, "IMU vals: %d", Imu_vals.ax);
+            sensorReady = false;
         }
         //vTaskDelay(1000/portTICK_PERIOD_MS);
     }

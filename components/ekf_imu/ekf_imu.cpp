@@ -11,7 +11,7 @@ ekf_imu::~ekf_imu()
 {
 }
 
-void ekf_imu::init(Vector7f state0_, Matrix7f P0, Matrix7f Q, Eigen::Matrix3f R)
+void ekf_imu::init(Vector7f state0_, Matrix7f P0, Matrix7f Q, Eigen::Matrix3f R, void* offsets)
 {
     //the initial estimate for state needs to be in the form of a quaternion
     // aligned with the NED world frame. Does this just mean that I will start with 
@@ -24,17 +24,31 @@ void ekf_imu::init(Vector7f state0_, Matrix7f P0, Matrix7f Q, Eigen::Matrix3f R)
     this->Q = Q;
     // Init measurement covariance
     this->R = R;
+    this->offsets = (float*) offsets;
+    for(int i = 0; i < 6; i++){
+        std::cout << "off:" << this->offsets[i];
+    }
+    //std::copy(offsets, offsets+5, this->offsets);
 }
 
 Eigen::Matrix<float, 4, 3> ekf_imu::skew(Eigen::Vector4f q_){
     Eigen::Matrix<float, 4, 3> S_q;
-    S_q <<  -q_(1,0), -q_(2,0), -q_(3,0),
-            q_(0,0), -q_(3,0), -q_(2,0),
+    S_q <<  q_(1,0), q_(2,0), q_(3,0),
+            q_(0,0), -q_(3,0), q_(2,0),
             q_(3,0), q_(0,0), -q_(1,0),
             -q_(2,0), q_(1,0), q_(0,0);
     return S_q;
 }
 
+Eigen::Matrix4f ekf_imu::skewOmega(Eigen::Vector4f w_){
+    Eigen::Matrix4f S_w;
+    S_w << 0 , -w_(0,0), -w_(1,0) -w_(2,0),
+            w_(0,0), 0, w_(2,0), -w_(1,0),
+            w_(1,0), -w_(2,0), 0, w_(0,0),
+            w_(2,0), w_(1,0), -w_(0,0), 0;
+    
+    return S_w;
+}
 /*
 ekf_imu::Matrix7f ekf_imu::setStateMatrix(Vector7f state_, float dt){
     ekf_imu::Matrix7f F = Matrix7f::Identity();
@@ -56,13 +70,24 @@ void ekf_imu::qNorm(ekf_imu::Vector7f* state_){
     // A unit quaternion is just a quaternion where each element is divided by 
     // the length of the whole quaternion vector. For our rotation quaternion to remain a purely
     // rotational quaternion, it must remain a unit quaternion
+    // I am passing the state it but also using the this->state reference
     float q_length = 0;
     for(int i = 0; i < 4; i++){
-        q_length+= (*state_)(i,0) * (*state_)(i,0);
+        q_length+= ((*state_)(i,0) * (*state_)(i,0));
     }
     q_length = std::sqrt(q_length);
     state_->block<4,1>(0,0) = state_->block<4,1>(0,0) / q_length;
     //return state_;
+}
+
+void ekf_imu::threeNorm(Eigen::Vector3f* vec3_){
+    float vec_length = 0;
+    for(int i = 0; i < 3; i++){
+        vec_length+= ((*vec3_)(i,0) * (*vec3_)(i,0));
+    }
+    vec_length = std::sqrt(vec_length);
+    *vec3_ = *vec3_ / vec_length;
+
 }
 
 
@@ -93,31 +118,47 @@ void ekf_imu::update(float measurement[3]){
     this->measurement_ << measurement[0], measurement[1], measurement[2];
     ekf_imu::Matrix3x7f H = ekf_imu::Matrix3x7f::Zero();
     H.block<3,4>(0,0) <<    this->state_[2], this->state_[3], this->state_[0], this->state_[1],
-                            this->state_[1], this->state_[0], this->state_[3], this->state_[2],
-                            this->state_[1], -this->state_[1], -this->state_[2], this->state_[3];
+                            -(this->state_[1]), -(this->state_[0]), this->state_[3], this->state_[2],
+                            this->state_[0], -(this->state_[1]), -(this->state_[2]), this->state_[3];
+
+    H.block<3,4>(0,0) = H.block<3,4>(0,0) * 2;
     
     Eigen::MatrixXf K_TEMP = (H * this->P * H.transpose() + R).inverse();
     ekf_imu::Matrix7x3f K = this->P * H.transpose() * K_TEMP;
 
+    Eigen::Vector3f h_ = {2 * (this->state_[1] * this->state_[3] + this->state_[0] * this->state_[2]),
+                        2 * (this->state_[2] * this->state_[3] - this->state_[0] * this->state_[1]),
+                        (this->state_[0] * this->state_[0]) - (this->state_[1] * this->state_[1]) - (this->state_[2] * this->state_[2]) + (this->state_[3] * this->state_[3])};
+
+    threeNorm(&(h_));
+    threeNorm(&(measurement_));
+
+    this->state_ = this->state_ + K * (this->measurement_ - h_);
+    qNorm(&(this->state_));
+    Eigen::Vector3f offsets_ = {this->offsets[3], this->offsets[4], this->offsets[5]};
+    threeNorm(&offsets_);
+    this->state_.block<3,1>(4,0) = offsets_;
+    //threeNorm(&(this->state_.block<3,1>(4,0)));
+    this->P = (ekf_imu::Matrix7f::Identity() - K * H) * this->P;
                         
 }
 
 // A similar note as for the qNorm function applies to this one
-void quat2TaitBryan(ekf_imu::Vector7f state_, float* taitBryanAngles){
+void ekf_imu::quat2TaitBryan(float* taitBryanAngles){
     // Calculating Roll
-    float sinr_cosp = 2 * (state_(0,0) * state_(1,0) + state_(2,0) * state_(3,0));
-    float cosr_cosp = 1 - 2 * (state_(1,0) * state_(1,0) + state_(2,0) * state_(2,0));
-    taitBryanAngles[0] = std::atan2(sinr_cosp, cosr_cosp);
+    float sinr_cosp = 2 * (this->state_(0,0) * this->state_(1,0) + this->state_(2,0) * this->state_(3,0));
+    float cosr_cosp = 1 - 2 * (this->state_(1,0) * this->state_(1,0) + this->state_(2,0) * this->state_(2,0));
+    taitBryanAngles[0] = (180 / M_PI) * std::atan2(sinr_cosp, cosr_cosp);
 
     // Calculating Pitch
-    float sinp = std::sqrt(1 + 2 * (state_(0,0) * state_(2,0) - state_(1,0) * state_(3,0)));
-    float cosp = std::sqrt(1 - 2 * (state_(0,0) * state_(2,0) - state_(1,0) * state_(3,0)));
-    taitBryanAngles[1] = std::atan2(sinp, cosp) - M_PI / 2;
+    float sinp = std::sqrt(1 + 2 * (this->state_(0,0) * this->state_(2,0) - this->state_(1,0) * this->state_(3,0)));
+    float cosp = std::sqrt(1 - 2 * (this->state_(0,0) * this->state_(2,0) - this->state_(1,0) * this->state_(3,0)));
+    taitBryanAngles[1] = (180 / M_PI) * (std::atan2(sinp, cosp) - M_PI / 2);
 
     // Calculting Yaw
-    float siny_cosp = 2 * (state_(0,0) * state_(3,0) + state_(1,0) * state_(2,0));
-    float cosy_cosp = 1 - 2 * (state_(2,0) * state_(2,0) + state_(3,0) * state_(3,0));
-    taitBryanAngles[2] = std::atan2(siny_cosp, cosy_cosp); 
+    float siny_cosp = 2 * (this->state_(0,0) * this->state_(3,0) + this->state_(1,0) * this->state_(2,0));
+    float cosy_cosp = 1 - 2 * (this->state_(2,0) * this->state_(2,0) + this->state_(3,0) * this->state_(3,0));
+    taitBryanAngles[2] = (180 / M_PI) *std::atan2(siny_cosp, cosy_cosp); 
 }
 
 void ekf_imu::printState(){
